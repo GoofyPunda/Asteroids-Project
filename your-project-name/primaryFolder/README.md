@@ -54,7 +54,7 @@ Run the script from the project root directory using `uv`, so it picks up the pr
 uv run main.py
 ```
 
-**30/09/2026 note:** `uv run main.py` only looks in the folder you're currently in, so `cd` into the folder that contains `main.py` first (use `pwd` and `ls` to check where you are and what's in the folder).
+**30/09/2026 note:** `uv run main.py` only looks in the folder you're currently in, so you may have to `cd` into the folder that contains `main.py` first (`cd/your-project-name/primaryFolder` and then `uv run main.py` typically works).
 
 ## Example Output
 
