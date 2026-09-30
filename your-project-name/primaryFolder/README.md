@@ -15,6 +15,7 @@ Asteroids is a Python game project (following the boot.dev Pygame curriculum) th
 - game window opens via `pygame.display.set_mode` — 30/09/2026
 - game loop added (log_state, handle events - allow's for the extrnal window to be opened & closed at will, fill black & flip) — 30/09/2026
 - `pygame.QUIT` event handling so the window's close button exits cleanly — 30/09/2026
+- 60 FPS cap and delta time (`dt`) added using `pygame.time.Clock` — 30/09/2026
 
 
 ## Features
@@ -24,6 +25,7 @@ Asteroids is a Python game project (following the boot.dev Pygame curriculum) th
 - Logging system (`logger.py`) that snapshots game state to `game_state.jsonl` roughly once per second, for debugging without needing to watch the game window directly
 - Opens a 1280x720 black game window that stays open in a game loop until the window is closed (added 30/09/2026)
 - Window close button exits the game cleanly via `pygame.QUIT` event handling (added 30/09/2026)
+- Game is capped at a maximum of 60 FPS & now tracks delta time (`dt`) since the last frame (added 30/09/2026)
 
 ## Project Structure (files/folders) - May be updated as the Project grows
 ```
@@ -54,7 +56,7 @@ Run the script from the project root directory using `uv`, so it picks up the pr
 uv run main.py
 ```
 
-**30/09/2026 note:** `uv run main.py` only looks in the folder you're currently in, so you may have to `cd` into the folder that contains `main.py` first (`cd/your-project-name/primaryFolder` and then `uv run main.py` typically works).
+**30/09/2026 note:** `uv run main.py` only looks in the folder you're currently in, so you may have to `cd` into the folder that contains `main.py` first (`cd your-project-name/primaryFolder`).
 
 ## Example Output
 
@@ -72,7 +74,10 @@ Screen height: 720
 pygame 2.6.1 (SDL 2.28.4, Python 3.13.15)
 Hello from the pygame community. https://www.pygame.org/contribute.html
 ```
-A black 1280x720 window opens & stays open until it's manually closed. As of right now, the three startup `print` lines from 27/09/2026 no longer appear.
+A black 1280x720 window opens & stays open until it's manually closed. As of right now, the three startup `print` lines from 27/09/2026 no longer appear. 
+The terminal is also unable to be used until the pygame window closes at this time of the project(may carry through until the end).
+
+**30/09/2026** — while testing the 60 FPS cap, `dt` was temporarily printed every frame. The first value was larger (~0.485, since it includes the time spent setting up the window), then it settled at roughly 0.016–0.017 seconds per frame. The `print(dt)` line was removed afterwards, as the lesson asked - "Remove the line that prints dt to the console (but leave the variable itself, we'll need it later) - it creates a lot of noise, we just wanted to see it working"- so this doesn't appear in the normal output.
 
 ## How It Works (this specific project, variables can change)
 
@@ -81,6 +86,9 @@ A black 1280x720 window opens & stays open until it's manually closed. As of rig
 - **30/09/2026 update:** `main()` now calls `pygame.init()`, creates the window with `pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))`, then runs the game loop
 - The game loop (`while True:`) repeats every frame: `log_state()`, handle events (returning on `pygame.QUIT`), `screen.fill("black")`, then `pygame.display.flip()` (flip comes last so the finished frame is what gets shown)
 - The general idea of a game loop: check player input, update the game world, draw to the screen, many times per second
+- **30/09/2026 update (FPS + delta time):** a `pygame.time.Clock()` is stored in the `clock` variable, alongside a `dt` variable that starts at `0.0` (a float, since it will hold a decimal number of seconds). At the end of each pass of the game loop, `dt = clock.tick(60) / 1000` caps the game at 60 FPS and stores how many seconds passed since the last frame. `.tick(60)` returns milliseconds, hence dividing by 1000.
+- **Why delta time matters:** it decouples the game's speed from the computer's speed. If a computer's CPU speeds up or slows down, things like the asteroids shouldn't speed up or slow down with it. Movement can later be multiplied by `dt` so it stays consistent. `dt` isn't used for anything yet.
+- **Placement matters:** the `dt = clock.tick(60) / 1000` line has to sit at the same indentation as the `for event` loop (directly in the `while` loop's body), not inside it, so it runs once per frame rather than once per event.
 
 **constants.py**
 - `SCREEN_WIDTH` — the game window's width in pixels (1280)
@@ -98,6 +106,8 @@ A black 1280x720 window opens & stays open until it's manually closed. As of rig
 - **27/09/2026 — `ModuleNotFoundError: No module named 'pygame'`**: Ran the script with plain `python3 main.py`, which uses the system Python rather than the project's virtual environment where pygame was actually installed. Fixed by running it through `uv run main.py` instead, which automatically uses the project's own `.venv`.
 
 - **27/09/2026 — Missing `.gitignore`**: The lesson said `uv init` would auto-create a `.gitignore`, but it wasn't present after setup. Also got confused between two different `.gitignore` files — one auto-generated later inside `.venv/` (governs pygame/venv internals only) and the actual project-level one next to `main.py` (created manually with `touch .gitignore`, and the one that matters for git tracking). Lesson: check *which* `.gitignore` you're editing when a project has more than one.
+
+- **30/09/2026 — `Failed to spawn main.py: No such file or directory`**: Ran `uv run main.py` from the outer `Asteroids-Project` folder, but `main.py` lives inside a nested folder, so the terminal couldn't find it. Fixed by using `pwd` and `ls` to see where I was, then `cd`-ing into the folder that contains `main.py`. Lesson: the terminal only looks in the folder it's standing in.
 
 ## Other Mentions
 
