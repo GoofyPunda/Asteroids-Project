@@ -4,6 +4,7 @@
 
 Asteroids is a Python game project (following the boot.dev Pygame curriculum) that recreates the classic Asteroids arcade game. It uses Pygame for graphics & input and `uv` for project/dependency management.
 
+**IMPORTANT-NOTE:** This README will contain EVERYTHING — entries are dated & kept even if later code changes or removes what they describe. If a change affects existing output/behaviour, a new dated note is added rather than the old one being deleted.
 ## Status
 
 🚧 Project in Progress:
@@ -11,22 +12,27 @@ Asteroids is a Python game project (following the boot.dev Pygame curriculum) th
 - constants module for screen dimensions — 27/09/2026
 - pygame initialization and screen resolution printout — 27/09/2026
 - game state logging module added — 27/09/2026
+- game window opens via `pygame.display.set_mode` — 30/09/2026
+- game loop added (log_state, handle events - allow's for the extrnal window to be opened & closed at will, fill black & flip) — 30/09/2026
+- `pygame.QUIT` event handling so the window's close button exits cleanly — 30/09/2026
 
-**IMPORTANT-NOTE:** This README will contain EVERYTHING — entries are dated & kept even if later code changes or removes what they describe. If a change affects existing output/behaviour, a new dated note is added rather than the old one being deleted.
 
 ## Features
 
 - Initializes Pygame & reports the installed version on startup
 - Central `constants.py` module storing shared values like screen width/height, avoiding magic numbers scattered through the code
 - Logging system (`logger.py`) that snapshots game state to `game_state.jsonl` roughly once per second, for debugging without needing to watch the game window directly
+- Opens a 1280x720 black game window that stays open in a game loop until the window is closed (added 30/09/2026)
+- Window close button exits the game cleanly via `pygame.QUIT` event handling (added 30/09/2026)
 
-## Project Structure (files/folders) - Updated as the project grows
+## Project Structure (files/folders) - May be updated as the Project grows
 ```
 ├── .venv/
 ├── __pycache__/
 ├── .gitignore
 ├── .python-version
 ├── constants.py
+├── game_state.jsonl
 ├── logger.py
 ├── main.py
 ├── pyproject.toml
@@ -48,6 +54,8 @@ Run the script from the project root directory using `uv`, so it picks up the pr
 uv run main.py
 ```
 
+**30/09/2026 note:** `uv run main.py` only looks in the folder you're currently in, so `cd` into the folder that contains `main.py` first (use `pwd` and `ls` to check where you are and what's in the folder).
+
 ## Example Output
 
 **27/09/2026** — after adding constants and the startup print statements:
@@ -59,10 +67,20 @@ Screen width: 1280
 Screen height: 720
 ```
 
+**30/09/2026** — after adding the game loop:
+```
+pygame 2.6.1 (SDL 2.28.4, Python 3.13.15)
+Hello from the pygame community. https://www.pygame.org/contribute.html
+```
+A black 1280x720 window opens & stays open until it's manually closed. As of right now, the three startup `print` lines from 27/09/2026 no longer appear.
+
 ## How It Works (this specific project, variables can change)
 
 **main.py**
 - `main()` — entry point; prints the pygame version and the configured screen width/height on startup
+- **30/09/2026 update:** `main()` now calls `pygame.init()`, creates the window with `pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))`, then runs the game loop
+- The game loop (`while True:`) repeats every frame: `log_state()`, handle events (returning on `pygame.QUIT`), `screen.fill("black")`, then `pygame.display.flip()` (flip comes last so the finished frame is what gets shown)
+- The general idea of a game loop: check player input, update the game world, draw to the screen, many times per second
 
 **constants.py**
 - `SCREEN_WIDTH` — the game window's width in pixels (1280)
@@ -84,3 +102,5 @@ Screen height: 720
 ## Other Mentions
 
 - **27/09/2026** — Learning Git/source control alongside this project — using VS Code's Source Control panel (stage → commit → push) rather than the terminal for most git operations, with terminal used mainly for running/testing the code via `uv`.
+
+- **30/09/2026** — Started using a separate git branch for each lesson (`gameLoop` for this one) so mistakes never touch `main`. Committed and pushed the branch, then merged it into `main` from the terminal (`git checkout main`, `git merge gameLoop`, `git push origin main`). The branch was kept afterwards to preserve history. I started doing this as I learnt from my bookbot mistakes
