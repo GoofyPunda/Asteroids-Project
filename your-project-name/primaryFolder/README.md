@@ -16,6 +16,8 @@ Asteroids is a Python game project (following the boot.dev Pygame curriculum) th
 - game loop added (log_state, handle events - allow's for the extrnal window to be opened & closed at will, fill black & flip) — 30/09/2026
 - `pygame.QUIT` event handling so the window's close button exits cleanly — 30/09/2026
 - 60 FPS cap and delta time (`dt`) added using `pygame.time.Clock` — 30/09/2026
+- `CircleShape` base class added in `circleshape.py` (inherits from `pygame.sprite.Sprite`) — 01/10/2026
+- `Player` class added in `player.py` (inherits from `CircleShape`), drawn as a white triangle in the centre of the window — 07/11/2026
 
 
 ## Features
@@ -26,6 +28,8 @@ Asteroids is a Python game project (following the boot.dev Pygame curriculum) th
 - Opens a 1280x720 black game window that stays open in a game loop until the window is closed (added 30/09/2026)
 - Window close button exits the game cleanly via `pygame.QUIT` event handling (added 30/09/2026)
 - Game is capped at a maximum of 60 FPS & now tracks delta time (`dt`) since the last frame (added 30/09/2026)
+- Reusable `CircleShape` base class that stores a position, velocity and radius for game objects (added 01/10/2026)
+- A `Player` that spawns in the centre of the window and is drawn as a white triangle outline every frame (its hitbox is a circle) (added 07/11/2026)
 
 ## Project Structure (files/folders) - May be updated as the Project grows
 ```
@@ -33,10 +37,12 @@ Asteroids is a Python game project (following the boot.dev Pygame curriculum) th
 ├── __pycache__/
 ├── .gitignore
 ├── .python-version
+├── circleshape.py
 ├── constants.py
 ├── game_state.jsonl
 ├── logger.py
 ├── main.py
+├── player.py
 ├── pyproject.toml
 ├── uv.lock
 └── README.md
@@ -79,6 +85,8 @@ The terminal is also unable to be used until the pygame window closes at this ti
 
 **30/09/2026** — while testing the 60 FPS cap, `dt` was temporarily printed every frame. The first value was larger (~0.485, since it includes the time spent setting up the window), then it settled at roughly 0.016–0.017 seconds per frame. The `print(dt)` line was removed afterwards, as the lesson asked - "Remove the line that prints dt to the console (but leave the variable itself, we'll need it later) - it creates a lot of noise, we just wanted to see it working"- so this doesn't appear in the normal output.
 
+**07/11/2026** — after adding the `Player`: the terminal output is the same two pygame lines as 30/09/2026, but the black 1280x720 window now has a white triangle outline in the middle. The triangle points downwards because `rotation` is `0` and, in pygame, "forward" at zero rotation points down the screen. `game_state.jsonl` also now records the player (the Boot.dev test looks for `"type": "Player"` at `"pos": [640.0, 360.0]`, the centre of the screen).
+
 ## How It Works (this specific project, variables can change)
 
 **main.py**
@@ -89,13 +97,27 @@ The terminal is also unable to be used until the pygame window closes at this ti
 - **30/09/2026 update (FPS + delta time):** a `pygame.time.Clock()` is stored in the `clock` variable, alongside a `dt` variable that starts at `0.0` (a float, since it will hold a decimal number of seconds). At the end of each pass of the game loop, `dt = clock.tick(60) / 1000` caps the game at 60 FPS and stores how many seconds passed since the last frame. `.tick(60)` returns milliseconds, hence dividing by 1000.
 - **Why delta time matters:** it decouples the game's speed from the computer's speed. If a computer's CPU speeds up or slows down, things like the asteroids shouldn't speed up or slow down with it. Movement can later be multiplied by `dt` so it stays consistent. `dt` isn't used for anything yet.
 - **Placement matters:** the `dt = clock.tick(60) / 1000` line has to sit at the same indentation as the `for event` loop (directly in the `while` loop's body), not inside it, so it runs once per frame rather than once per event.
+- **07/11/2026 update (Player):** before the game loop starts, the centre of the screen is worked out (`SCREEN_WIDTH / 2`, `SCREEN_HEIGHT / 2`) and a single `Player` is created there and stored in the `player` variable. Inside the loop, `player.draw(screen)` sits between `screen.fill("black")` and `pygame.display.flip()`, so each frame is: wipe the screen, draw the player, then show the result. (Drawing before the fill would just get painted over by the black.)
 
 **constants.py**
 - `SCREEN_WIDTH` — the game window's width in pixels (1280)
 - `SCREEN_HEIGHT` — the game window's height in pixels (720)
+- **07/11/2026 update:** `PLAYER_RADIUS` (20) — the radius of the player's hitbox circle, and `LINE_WIDTH` (2) — the thickness of the lines used to draw the player's ship
 
 **logger.py**
 - Provided logging utility (not written from scratch, was instead given to us in BootDev Chapter 2 Lesson 2) that snapshots the game's local state at about once per second & writes it to `game_state.jsonl`, so that the game behaviour is able to be verified without the need to manually inspect the running window
+
+**circleshape.py** (added 01/10/2026)
+- Provided base class from BootDev Chapter 3 Lesson 1 (pasted in, not written from scratch). `CircleShape` inherits from `pygame.sprite.Sprite`, meaning it starts with everything `Sprite` already has and adds game-specific attributes on top. Other game objects (the player, later the asteroids) are built on top of it so the shared parts are only written once.
+- `__init__(x, y, radius)` stores three attributes: `position` (a `pygame.Vector2` of x and y), `velocity` (a `Vector2` starting at `(0, 0)`, i.e. not moving) and `radius`.
+- Inside `__init__`, `hasattr(self, "containers")` checks whether any sprite groups have been set up; if so, `super().__init__(*self.containers)` adds the object to them automatically, otherwise plain `super().__init__()` is used. The groups aren't used yet, they're for later.
+- `draw(screen)` and `update(dt)` are empty placeholders (`pass`) marked "must override": each child class provides its own version, since a ship and an asteroid will draw and update differently.
+
+**player.py** (added 07/11/2026)
+- `Player` inherits from `CircleShape`. Its constructor takes `x` and `y`, passes `x`, `y` and `PLAYER_RADIUS` up to `CircleShape` with `super().__init__(...)`, and sets `self.rotation = 0`. The radius isn't an input because it's always the same constant.
+- `triangle()` (provided by Boot.dev) works out the three corner points of a triangle from the player's position, radius and rotation. The ship is drawn as a triangle, but its hitbox is a circle.
+- `draw(screen)` overrides `CircleShape.draw` and calls `pygame.draw.polygon(screen, "white", self.triangle(), LINE_WIDTH)`.
+- `rotation` has to be stored as an attribute (`self.rotation`) rather than a plain variable, otherwise `triangle()` couldn't read it later.
 
 ## Troubleshooting Notes
 
@@ -109,8 +131,12 @@ The terminal is also unable to be used until the pygame window closes at this ti
 
 - **30/09/2026 — `Failed to spawn main.py: No such file or directory`**: Ran `uv run main.py` from the outer `Asteroids-Project` folder, but `main.py` lives inside a nested folder, so the terminal couldn't find it. Fixed by using `pwd` and `ls` to see where I was, then `cd`-ing into the folder that contains `main.py`. Lesson: the terminal only looks in the folder it's standing in.
 
+- **07/11/2026 — Merge conflict in `player.py`**: Half-finished Chapter 3 Lesson 2 work had been committed straight onto `main` instead of the lesson branch, so merging the `Draw-Player` branch into `main` conflicted in `player.py` (git marks the two competing versions with `<<<<<<<`, `=======` and `>>>>>>>` lines inside the file). Fixed by keeping the incoming `Draw-Player` version (the finished one) in the editor and checking that no marker lines were left in the file. Afterwards `git status` still showed `player.py` as modified, meaning the cleaned-up version hadn't been committed yet and the committed merge still had leftover junk in it, so it needed its own commit and push. Lesson: a conflict isn't resolved until the clean file is committed, and unfinished lesson work should stay on its own branch rather than `main`.
+
 ## Other Mentions
 
 - **27/09/2026** — Learning Git/source control alongside this project — using VS Code's Source Control panel (stage → commit → push) rather than the terminal for most git operations, with terminal used mainly for running/testing the code via `uv`.
 
 - **30/09/2026** — Started using a separate git branch for each lesson (`gameLoop` for this one) so mistakes never touch `main`. Committed and pushed the branch, then merged it into `main` from the terminal (`git checkout main`, `git merge gameLoop`, `git push origin main`). The branch was kept afterwards to preserve history. I started to do this as I learnt from my bookbot mistakes
+
+- **07/11/2026** — Came back to the project after a break in the middle of Chapter 3 Lesson 2 (Draw Player). I carried on from the existing `Draw-Player` branch, finished the lesson there, then merged it into `main`, which led to my first merge conflict (see Troubleshooting Notes). Both branches were kept for history.
