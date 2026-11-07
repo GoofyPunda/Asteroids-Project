@@ -1,8 +1,5 @@
 import pygame
 
-PLAYER_RADIUS = 20
-LINE_WIDTH = 2
-
 # Base class for game objects
 class CircleShape(pygame.sprite.Sprite):
     containers: tuple[pygame.sprite.Group, ...]
