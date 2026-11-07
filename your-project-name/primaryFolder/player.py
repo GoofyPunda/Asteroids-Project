@@ -1,19 +1,3 @@
-<<<<<<< HEAD
-from circleshape import CircleShape
-from constants import PLAYER_RADIUS
-
-
-class Player(CircleShape):
-    def __init__(self, x: int, y: int):
-        super().__init__(x, y, PLAYER_RADIUS)
-
-
-        #Attribution - Rotation
-        self.rotation = 0
-
-
-    # The Player(Circular Hitbox Shape, Triangle Figure, Given from Boot.dev)
-=======
 import pygame
 from circleshape import CircleShape
 from constants import PLAYER_RADIUS
@@ -28,7 +12,6 @@ class Player(CircleShape):
         pygame.draw.polygon(screen, "white", self.triangle(), LINE_WIDTH)
 
     # in the Player class
->>>>>>> Draw-Player
     def triangle(self) -> list[pygame.Vector2]:
         forward = pygame.Vector2(0, 1).rotate(self.rotation)
         right = pygame.Vector2(0, 1).rotate(self.rotation + 90) * self.radius / 1.5
