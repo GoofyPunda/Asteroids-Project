@@ -18,6 +18,7 @@ Asteroids is a Python game project (following the boot.dev Pygame curriculum) th
 - 60 FPS cap and delta time (`dt`) added using `pygame.time.Clock` — 30/09/2026
 - `CircleShape` base class added in `circleshape.py` (inherits from `pygame.sprite.Sprite`) — 01/10/2026
 - `Player` class added in `player.py` (inherits from `CircleShape`), drawn as a white triangle in the centre of the window — 07/11/2026
+- Player rotation added: `A` rotates the ship left and `D` rotates it right (`rotate` and `update` methods on `Player`, plus a `PLAYER_TURN_SPEED` constant) — 13/11/2026
 
 
 ## Features
@@ -30,6 +31,7 @@ Asteroids is a Python game project (following the boot.dev Pygame curriculum) th
 - Game is capped at a maximum of 60 FPS & now tracks delta time (`dt`) since the last frame (added 30/09/2026)
 - Reusable `CircleShape` base class that stores a position, velocity and radius for game objects (added 01/10/2026)
 - A `Player` that spawns in the centre of the window and is drawn as a white triangle outline every frame (its hitbox is a circle) (added 07/11/2026)
+- The player's ship rotates left/right while the `A`/`D` keys are held, at a speed scaled by `dt` so it turns at the same rate on any computer (added 13/11/2026)
 
 ## Project Structure (files/folders) - May be updated as the Project grows
 ```
@@ -64,6 +66,8 @@ uv run main.py
 
 **30/09/2026 note:** `uv run main.py` only looks in the folder you're currently in, so you may have to `cd` into the folder that contains `main.py` first (`cd your-project-name/primaryFolder`).
 
+**13/11/2026 note:** once the game is running, hold `A` to rotate the ship left and `D` to rotate it right.
+
 ## Example Output
 
 **27/09/2026** — after adding constants and the startup print statements:
@@ -87,6 +91,8 @@ The terminal is also unable to be used until the pygame window closes at this ti
 
 **07/11/2026** — after adding the `Player`: the terminal output is the same two pygame lines as 30/09/2026, but the black 1280x720 window now has a white triangle outline in the middle. The triangle points downwards because `rotation` is `0` and, in pygame, "forward" at zero rotation points down the screen. `game_state.jsonl` also now records the player (the Boot.dev test looks for `"type": "Player"` at `"pos": [640.0, 360.0]`, the centre of the screen).
 
+**13/11/2026** — after adding rotation: the terminal output is unchanged, but holding `A` or `D` now spins the triangle in the window. The player's rotation value in `game_state.jsonl` changes as it turns (the Boot.dev test checks that at least one recorded `Player` rotation is not `0`, so the keys have to actually be pressed while the game runs).
+
 ## How It Works (this specific project, variables can change)
 
 **main.py**
@@ -98,11 +104,13 @@ The terminal is also unable to be used until the pygame window closes at this ti
 - **Why delta time matters:** it decouples the game's speed from the computer's speed. If a computer's CPU speeds up or slows down, things like the asteroids shouldn't speed up or slow down with it. Movement can later be multiplied by `dt` so it stays consistent. `dt` isn't used for anything yet.
 - **Placement matters:** the `dt = clock.tick(60) / 1000` line has to sit at the same indentation as the `for event` loop (directly in the `while` loop's body), not inside it, so it runs once per frame rather than once per event.
 - **07/11/2026 update (Player):** before the game loop starts, the centre of the screen is worked out (`SCREEN_WIDTH / 2`, `SCREEN_HEIGHT / 2`) and a single `Player` is created there and stored in the `player` variable. Inside the loop, `player.draw(screen)` sits between `screen.fill("black")` and `pygame.display.flip()`, so each frame is: wipe the screen, draw the player, then show the result. (Drawing before the fill would just get painted over by the black.)
+- **13/11/2026 update (Moving Around):** the loop now calls `player.update(dt)` once per frame, after the events are handled and before the screen is filled and drawn. So each frame is: log the state, handle events, update the player, wipe the screen, draw the player, flip, then work out `dt` for the next frame. `dt` is finally being used, which is what it was saved for.
 
 **constants.py**
 - `SCREEN_WIDTH` — the game window's width in pixels (1280)
 - `SCREEN_HEIGHT` — the game window's height in pixels (720)
 - **07/11/2026 update:** `PLAYER_RADIUS` (20) — the radius of the player's hitbox circle, and `LINE_WIDTH` (2) — the thickness of the lines used to draw the player's ship
+- **13/11/2026 update:** `PLAYER_TURN_SPEED` (300) — how fast the player rotates, in degrees per second
 
 **logger.py**
 - Provided logging utility (not written from scratch, was instead given to us in BootDev Chapter 2 Lesson 2) that snapshots the game's local state at about once per second & writes it to `game_state.jsonl`, so that the game behaviour is able to be verified without the need to manually inspect the running window
@@ -118,6 +126,8 @@ The terminal is also unable to be used until the pygame window closes at this ti
 - `triangle()` (provided by Boot.dev) works out the three corner points of a triangle from the player's position, radius and rotation. The ship is drawn as a triangle, but its hitbox is a circle.
 - `draw(screen)` overrides `CircleShape.draw` and calls `pygame.draw.polygon(screen, "white", self.triangle(), LINE_WIDTH)`.
 - `rotation` has to be stored as an attribute (`self.rotation`) rather than a plain variable, otherwise `triangle()` couldn't read it later.
+- **13/11/2026 update:** `rotate(dt)` adds `PLAYER_TURN_SPEED * dt` to `self.rotation`. Multiplying by `dt` means the ship turns by an amount based on how much time passed since the last frame, so it spins at the same speed (about 300 degrees per second) however fast the computer runs.
+- **13/11/2026 update:** `update(dt)` overrides `CircleShape.update`. It uses `pygame.key.get_pressed()` to see which keys are currently held down: `A` calls `self.rotate(-dt)` and `D` calls `self.rotate(dt)`. Passing a negative `dt` reverses the direction, which is how `A` turns the ship left while `D` turns it right.
 
 ## Troubleshooting Notes
 
@@ -137,6 +147,4 @@ The terminal is also unable to be used until the pygame window closes at this ti
 
 - **27/09/2026** — Learning Git/source control alongside this project — using VS Code's Source Control panel (stage → commit → push) rather than the terminal for most git operations, with terminal used mainly for running/testing the code via `uv`.
 
-- **30/09/2026** — Started using a separate git branch for each lesson (`gameLoop` for this one) so mistakes never touch `main`. Committed and pushed the branch, then merged it into `main` from the terminal (`git checkout main`, `git merge gameLoop`, `git push origin main`). The branch was kept afterwards to preserve history. I started to do this as I learnt from my bookbot mistakes
-
-- **07/11/2026** — Came back to the project after a break in the middle of Chapter 3 Lesson 2 (Draw Player). I carried on from the existing `Draw-Player` branch, finished the lesson there, then merged it into `main`, which led to my first merge conflict (see Troubleshooting Notes). Both branches were kept for history.
+- **30/09/2026** — Started using a separate git branch for each lesson (`gameLoop` for this one) so mistakes never touch `main`. Committed and pushed the branch, then
