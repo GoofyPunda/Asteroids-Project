@@ -21,6 +21,9 @@ Asteroids is a Python game project (following the boot.dev Pygame curriculum) th
 - Player rotation added: `A` rotates the ship left and `D` rotates it right (`rotate` and `update` methods on `Player`, plus a `PLAYER_TURN_SPEED` constant) — 13/11/2026
 - Player movement added: `W` moves the ship forward in the direction it's facing and `S` moves it backward (`move` method on `Player`, plus a `PLAYER_SPEED` constant) — 13/11/2026
 - Sprite groups added: `updatable` and `drawable` groups in `main.py`, which the `Player` joins automatically through `Player.containers`, so the game loop updates and draws the groups instead of the player directly — 14/11/2026
+- `Asteroid` class added in `asteroid.py` (inherits from `CircleShape`), drawn as a white circle outline that drifts in a straight line, plus a new `asteroids` group and the `ASTEROID_*` constants — 14/11/2026
+- `AsteroidField` added in `asteroidfield.py`, which keeps spawning new asteroids from the edges of the screen — 14/11/2026
+- Collision detection added: `collides_with` on `CircleShape`, so flying into an asteroid logs a `player_hit` event, prints `Game over!` and ends the game — 14/11/2026
 
 
 ## Features
@@ -36,6 +39,8 @@ Asteroids is a Python game project (following the boot.dev Pygame curriculum) th
 - The player's ship rotates left/right while the `A`/`D` keys are held, at a speed scaled by `dt` so it turns at the same rate on any computer (added 13/11/2026)
 - The player's ship flies forward/backward with `W`/`S` in whatever direction it is currently pointing, again scaled by `dt` so the speed doesn't depend on the computer (added 13/11/2026)
 - Game objects are managed with pygame sprite groups (`updatable` and `drawable`), so one call updates everything that needs updating and one loop draws everything that needs drawing, which keeps the game loop tidy as more objects are added (added 14/11/2026)
+- Asteroids (white circle outlines) drift across the screen in straight lines at a constant speed, and the `AsteroidField` spawns a new one from a random edge of the screen roughly every 0.8 seconds, with a random size, speed and direction (added 14/11/2026)
+- Collision detection between circular shapes: if the player touches an asteroid, the hit is logged as a `player_hit` event in `game_events.jsonl`, `Game over!` is printed to the terminal and the game exits. Asteroids simply pass through each other for now (added 14/11/2026)
 
 ## Project Structure (files/folders) - May be updated as the Project grows
 ```
@@ -43,8 +48,11 @@ Asteroids is a Python game project (following the boot.dev Pygame curriculum) th
 ├── __pycache__/
 ├── .gitignore
 ├── .python-version
+├── asteroid.py
+├── asteroidfield.py
 ├── circleshape.py
 ├── constants.py
+├── game_events.jsonl
 ├── game_state.jsonl
 ├── logger.py
 ├── main.py
@@ -73,6 +81,8 @@ uv run main.py
 **13/11/2026 note:** once the game is running, hold `A` to rotate the ship left and `D` to rotate it right.
 
 **13/11/2026 note (movement):** `W` flies the ship forward (the way the triangle's point is facing) and `S` flies it backward. Combine them with `A`/`D` to steer.
+
+**14/11/2026 note:** asteroids now drift in from the edges of the screen. If the ship touches one, the game ends immediately and `Game over!` is printed in the terminal (not in the game window), so keep an eye out and steer around them.
 
 ## Example Output
 
@@ -103,6 +113,10 @@ The terminal is also unable to be used until the pygame window closes at this ti
 
 **14/11/2026** — after adding sprite groups: the terminal output and the way the game looks and plays are exactly the same as before (the ship still turns and flies with `W`/`A`/`S`/`D`), because groups only change *how* the game loop manages objects, not what they do. The difference shows up in `game_state.jsonl`, which now records the `updatable` and `drawable` groups (the Boot.dev test checks that both groups contain at least one sprite).
 
+**14/11/2026** — after adding asteroids: the terminal output is unchanged, but white circles of different sizes now appear at the edges of the window roughly every 0.8 seconds and drift across it while the ship flies around as before. `game_state.jsonl` now also records the `asteroids` group (the Boot.dev test checks that an `AsteroidField` is in the `updatable` group and that the `asteroids` group contains at least one asteroid at the end of the log).
+
+**14/11/2026** — after adding collisions: when the ship touches an asteroid, the terminal prints `Game over!` and the program exits, so the game window closes right away. A single `player_hit` event is also written to `game_events.jsonl` (the Boot.dev test checks that exactly one is logged, so the game should be run once and crashed into an asteroid once).
+
 ## How It Works (this specific project, variables can change)
 
 **main.py**
@@ -117,6 +131,8 @@ The terminal is also unable to be used until the pygame window closes at this ti
 - **13/11/2026 update (Moving Around):** the loop now calls `player.update(dt)` once per frame, after the events are handled and before the screen is filled and drawn. So each frame is: log the state, handle events, update the player, wipe the screen, draw the player, flip, then work out `dt` for the next frame. `dt` is finally being used, which is what it was saved for.
 - **14/11/2026 update (Groups):** before the game loop, two empty sprite groups are created: `updatable = pygame.sprite.Group()` (everything that can be updated) and `drawable = pygame.sprite.Group()` (everything that can be drawn). Then `Player.containers = (updatable, drawable)` is set, and only *after* that is the `Player` created. That order matters: the class has to know its groups before any `Player` object exists, otherwise the player is created without joining either group and nothing gets updated or drawn. The loop no longer calls `player.update(dt)` and `player.draw(screen)` directly. Instead each frame is now: log the state, handle events, `updatable.update(dt)`, wipe the screen, `for thing in drawable: thing.draw(screen)`, then flip and work out `dt`. The `flip()` sits outside the `for` loop so it runs once per frame, not once per object. The point of all this is that the loop doesn't need to know about each individual object: any future object (asteroids, shots) just joins the right groups and gets updated/drawn automatically.
 - **Groups can overlap:** an object can be in several groups at once. The player is in both `updatable` and `drawable`, whereas some later objects (like the asteroid field) will only need updating, so they'll be in `updatable` only.
+- **14/11/2026 update (Asteroids):** a third group, `asteroids`, is created next to `updatable` and `drawable`, and the containers are set before anything is created: `Asteroid.containers = (asteroids, updatable, drawable)` (every asteroid joins all three groups automatically) and `AsteroidField.containers = (updatable,)` (the field only needs updating — it isn't drawn and it isn't an asteroid itself, and the trailing comma is what makes it a one-item tuple). `asteroid_field = AsteroidField()` is created after its container is set, and from then on the field spawns asteroids by itself as part of `updatable.update(dt)`, so nothing in the game loop had to change for them to appear and move.
+- **14/11/2026 update (Collisions):** right after `updatable.update(dt)`, the loop checks every asteroid in the `asteroids` group with `asteroid.collides_with(player)`. If one is touching the player, it calls `log_event("player_hit")`, prints `Game over!` and calls `sys.exit()` to end the game straight away (`sys` is imported at the top, along with `log_event` from `logger`). The check happens before the drawing, so the frame of the collision never gets drawn.
 
 **constants.py**
 - `SCREEN_WIDTH` — the game window's width in pixels (1280)
@@ -124,9 +140,11 @@ The terminal is also unable to be used until the pygame window closes at this ti
 - **07/11/2026 update:** `PLAYER_RADIUS` (20) — the radius of the player's hitbox circle, and `LINE_WIDTH` (2) — the thickness of the lines used to draw the player's ship
 - **13/11/2026 update:** `PLAYER_TURN_SPEED` (300) — how fast the player rotates, in degrees per second
 - **13/11/2026 update:** `PLAYER_SPEED` (200) — how fast the player moves, in pixels per second
+- **14/11/2026 update:** `ASTEROID_MIN_RADIUS` (20) — the radius of the smallest asteroid, `ASTEROID_KINDS` (3) — how many asteroid sizes there are, `ASTEROID_SPAWN_RATE_SECONDS` (0.8) — how often a new asteroid spawns, and `ASTEROID_MAX_RADIUS` — worked out as `ASTEROID_MIN_RADIUS * ASTEROID_KINDS` (60), the radius of the biggest asteroid
 
 **logger.py**
 - Provided logging utility (not written from scratch, was instead given to us in BootDev Chapter 2 Lesson 2) that snapshots the game's local state at about once per second & writes it to `game_state.jsonl`, so that the game behaviour is able to be verified without the need to manually inspect the running window
+- **14/11/2026 update:** `log_event` (also provided) is used for one-off events, such as `log_event("player_hit")` when the ship hits an asteroid. These are written to `game_events.jsonl`, which was added to `.gitignore` so it doesn't get committed (it's a generated file, like `game_state.jsonl`).
 
 **circleshape.py** (added 01/10/2026)
 - Provided base class from BootDev Chapter 3 Lesson 1 (pasted in, not written from scratch). `CircleShape` inherits from `pygame.sprite.Sprite`, meaning it starts with everything `Sprite` already has and adds game-specific attributes on top. Other game objects (the player, later the asteroids) are built on top of it so the shared parts are only written once.
@@ -134,6 +152,7 @@ The terminal is also unable to be used until the pygame window closes at this ti
 - Inside `__init__`, `hasattr(self, "containers")` checks whether any sprite groups have been set up; if so, `super().__init__(*self.containers)` adds the object to them automatically, otherwise plain `super().__init__()` is used. The groups aren't used yet, they're for later.
 - `draw(screen)` and `update(dt)` are empty placeholders (`pass`) marked "must override": each child class provides its own version, since a ship and an asteroid will draw and update differently.
 - **14/11/2026 update:** the groups are now being used. Because `Player.containers = (updatable, drawable)` is set before the player is created, the `hasattr(self, "containers")` check finds it, and `super().__init__(*self.containers)` adds the new player to both groups automatically. `circleshape.py` itself didn't need any changes.
+- **14/11/2026 update (Collisions):** `collides_with(other)` was added. It gets the distance between the two shapes' centres with `self.position.distance_to(other.position)` and returns `True` if that distance is less than or equal to the two radii added together (`self.radius + other.radius`), otherwise `False`. Everything is treated as a circle for collisions, including the triangular ship, which keeps the maths simple. It lives on `CircleShape` because everything that can collide inherits from it.
 
 **player.py** (added 07/11/2026)
 - `Player` inherits from `CircleShape`. Its constructor takes `x` and `y`, passes `x`, `y` and `PLAYER_RADIUS` up to `CircleShape` with `super().__init__(...)`, and sets `self.rotation = 0`. The radius isn't an input because it's always the same constant.
@@ -143,6 +162,16 @@ The terminal is also unable to be used until the pygame window closes at this ti
 - **13/11/2026 update:** `rotate(dt)` adds `PLAYER_TURN_SPEED * dt` to `self.rotation`. Multiplying by `dt` means the ship turns by an amount based on how much time passed since the last frame, so it spins at the same speed (about 300 degrees per second) however fast the computer runs.
 - **13/11/2026 update:** `update(dt)` overrides `CircleShape.update`. It uses `pygame.key.get_pressed()` to see which keys are currently held down: `A` calls `self.rotate(-dt)` and `D` calls `self.rotate(dt)`. Passing a negative `dt` reverses the direction, which is how `A` turns the ship left while `D` turns it right.
 - **13/11/2026 update (movement):** `move(dt)` works in four steps. (1) Start with a unit vector pointing straight down, `pygame.Vector2(0, 1)`. (2) Rotate it by the player's `rotation` so it points the same way the ship does (`unit_vector.rotate(...)` returns a *new* vector rather than changing the original, hence it's saved into `rotated_vector`). (3) Multiply it by `PLAYER_SPEED * dt` so its length is how far the ship should travel this frame. (4) Add that vector to `self.position`. `update` now also calls `self.move(dt)` when `W` is held and `self.move(-dt)` when `S` is held, so negative `dt` makes the ship go backward, the same trick as the rotation keys.
+
+**asteroid.py** (added 14/11/2026)
+- `Asteroid` inherits from `CircleShape`, the same way `Player` does. Its constructor takes `x`, `y` and `radius` and passes all three up with `super().__init__(x, y, radius)`.
+- `draw(screen)` overrides `CircleShape.draw` and draws a white circle outline with `pygame.draw.circle(screen, "white", self.position, self.radius, LINE_WIDTH)`. The circle you see is also the hitbox, so what you see is what collides.
+- `update(dt)` overrides `CircleShape.update` with `self.position += self.velocity * dt`, so the asteroid moves in a straight line at a constant speed (and, like the player, scaled by `dt`). A new asteroid's `velocity` starts at `(0, 0)`, and the `AsteroidField` gives it a real velocity when it spawns it.
+
+**asteroidfield.py** (added 14/11/2026)
+- Provided by Boot.dev (pasted in, not written from scratch). `AsteroidField` is itself a sprite, but it never draws anything, it just keeps a timer and spawns asteroids, which is why it only goes in the `updatable` group.
+- Its `update(dt)` adds `dt` to a spawn timer. Once the timer goes past `ASTEROID_SPAWN_RATE_SECONDS` (0.8), it resets and spawns a new asteroid from a random edge of the screen, with a random speed (40 to 100), a direction that's randomly turned up to 30 degrees either way, and a random size (`ASTEROID_MIN_RADIUS * kind`, where `kind` is 1 to `ASTEROID_KINDS`).
+- `spawn(radius, position, velocity)` creates the `Asteroid` and gives it its velocity. Because `Asteroid.containers` was set earlier, every spawned asteroid joins the `asteroids`, `updatable` and `drawable` groups on its own.
 
 ## Troubleshooting Notes
 
@@ -154,4 +183,18 @@ The terminal is also unable to be used until the pygame window closes at this ti
 
 - **27/09/2026 — Missing `.gitignore`**: The lesson said `uv init` would auto-create a `.gitignore`, but it wasn't present after setup. Also got confused between two different `.gitignore` files — one auto-generated later inside `.venv/` (governs pygame/venv internals only) and the actual project-level one next to `main.py` (created manually with `touch .gitignore`, and the one that matters for git tracking). Lesson: check *which* `.gitignore` you're editing when a project has more than one.
 
-- **30/09/2026 — `Failed to spawn main.py: No such file or directory`**: Ran `uv run main.py` from the outer
+- **30/09/2026 — `Failed to spawn main.py: No such file or directory`**: Ran `uv run main.py` from the outer `Asteroids-Project` folder, but `main.py` lives inside a nested folder, so the terminal couldn't find it. Fixed by using `pwd` and `ls` to see where I was, then `cd`-ing into the folder that contains `main.py`. Lesson: the terminal only looks in the folder it's standing in.
+
+- **07/11/2026 — Merge conflict in `player.py`**: Half-finished Chapter 3 Lesson 2 work had been committed straight onto `main` instead of the lesson branch, so merging the `Draw-Player` branch into `main` conflicted in `player.py` (git marks the two competing versions with `<<<<<<<`, `=======` and `>>>>>>>` lines inside the file). Fixed by keeping the incoming `Draw-Player` version (the finished one) in the editor and checking that no marker lines were left in the file. Afterwards `git status` still showed `player.py` as modified, meaning the cleaned-up version hadn't been committed yet and the committed merge still had leftover junk in it, so it needed its own commit and push. Lesson: a conflict isn't resolved until the clean file is committed, and unfinished lesson work should stay on its own branch rather than `main`.
+
+- **14/11/2026 — `ModuleNotFoundError: No module named 'asteroid'`**: Saved the new class in a file called `asteroids.py` (with an "s"), but the lesson's `asteroidfield.py` does `from asteroid import Asteroid`. Python imports by *file name*, so it couldn't find a module called `asteroid`. Changing the import in `main.py` to match the wrong file name only fixed one of the two files that import it. Fixed by renaming the file to `asteroid.py` (as the lesson says) and putting the import in `main.py` back. Lesson: when provided code imports a module by a certain name, the file has to be named exactly that.
+
+## Other Mentions
+
+- **27/09/2026** — Learning Git/source control alongside this project — using VS Code's Source Control panel (stage → commit → push) rather than the terminal for most git operations, with terminal used mainly for running/testing the code via `uv`.
+
+- **30/09/2026** — Started using a separate git branch for each lesson (`gameLoop` for this one) so mistakes never touch `main`. Committed and pushed the branch, then merged it into `main` from the terminal (`git checkout main`, `git merge gameLoop`, `git push origin main`). The branch was kept afterwards to preserve history. I started to do this as I learnt from my bookbot mistakes
+
+- **07/11/2026** — Came back to the project after a break in the middle of Chapter 3 Lesson 2 (Draw Player). I carried on from the existing `Draw-Player` branch, finished the lesson there, then merged it into `main`, which led to my first merge conflict (see Troubleshooting Notes). Both branches were kept for history.
+
+- **14/11/2026** — The branch for the Asteroids lesson was named `Asteroid's`. The apostrophe means the name has to be wrapped in double quotes in terminal commands (`git push -u origin "Asteroid's"`, `git merge "Asteroid's"`), otherwise zsh thinks a quote has been opened and waits for it to be closed. Simple branch names (no apostrophes or brackets) are easier.
