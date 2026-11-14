@@ -20,6 +20,7 @@ Asteroids is a Python game project (following the boot.dev Pygame curriculum) th
 - `Player` class added in `player.py` (inherits from `CircleShape`), drawn as a white triangle in the centre of the window — 07/11/2026
 - Player rotation added: `A` rotates the ship left and `D` rotates it right (`rotate` and `update` methods on `Player`, plus a `PLAYER_TURN_SPEED` constant) — 13/11/2026
 - Player movement added: `W` moves the ship forward in the direction it's facing and `S` moves it backward (`move` method on `Player`, plus a `PLAYER_SPEED` constant) — 13/11/2026
+- Sprite groups added: `updatable` and `drawable` groups in `main.py`, which the `Player` joins automatically through `Player.containers`, so the game loop updates and draws the groups instead of the player directly — 14/11/2026
 
 
 ## Features
@@ -34,6 +35,7 @@ Asteroids is a Python game project (following the boot.dev Pygame curriculum) th
 - A `Player` that spawns in the centre of the window and is drawn as a white triangle outline every frame (its hitbox is a circle) (added 07/11/2026)
 - The player's ship rotates left/right while the `A`/`D` keys are held, at a speed scaled by `dt` so it turns at the same rate on any computer (added 13/11/2026)
 - The player's ship flies forward/backward with `W`/`S` in whatever direction it is currently pointing, again scaled by `dt` so the speed doesn't depend on the computer (added 13/11/2026)
+- Game objects are managed with pygame sprite groups (`updatable` and `drawable`), so one call updates everything that needs updating and one loop draws everything that needs drawing, which keeps the game loop tidy as more objects are added (added 14/11/2026)
 
 ## Project Structure (files/folders) - May be updated as the Project grows
 ```
@@ -99,6 +101,8 @@ The terminal is also unable to be used until the pygame window closes at this ti
 
 **13/11/2026** — after adding movement: the terminal output is still unchanged, but `W`/`S` now fly the triangle around the window. The player's `pos` in `game_state.jsonl` changes as it moves (the Boot.dev test checks that the recorded `Player` positions contain more than one unique value, so the ship has to actually be flown around while the game runs).
 
+**14/11/2026** — after adding sprite groups: the terminal output and the way the game looks and plays are exactly the same as before (the ship still turns and flies with `W`/`A`/`S`/`D`), because groups only change *how* the game loop manages objects, not what they do. The difference shows up in `game_state.jsonl`, which now records the `updatable` and `drawable` groups (the Boot.dev test checks that both groups contain at least one sprite).
+
 ## How It Works (this specific project, variables can change)
 
 **main.py**
@@ -111,6 +115,8 @@ The terminal is also unable to be used until the pygame window closes at this ti
 - **Placement matters:** the `dt = clock.tick(60) / 1000` line has to sit at the same indentation as the `for event` loop (directly in the `while` loop's body), not inside it, so it runs once per frame rather than once per event.
 - **07/11/2026 update (Player):** before the game loop starts, the centre of the screen is worked out (`SCREEN_WIDTH / 2`, `SCREEN_HEIGHT / 2`) and a single `Player` is created there and stored in the `player` variable. Inside the loop, `player.draw(screen)` sits between `screen.fill("black")` and `pygame.display.flip()`, so each frame is: wipe the screen, draw the player, then show the result. (Drawing before the fill would just get painted over by the black.)
 - **13/11/2026 update (Moving Around):** the loop now calls `player.update(dt)` once per frame, after the events are handled and before the screen is filled and drawn. So each frame is: log the state, handle events, update the player, wipe the screen, draw the player, flip, then work out `dt` for the next frame. `dt` is finally being used, which is what it was saved for.
+- **14/11/2026 update (Groups):** before the game loop, two empty sprite groups are created: `updatable = pygame.sprite.Group()` (everything that can be updated) and `drawable = pygame.sprite.Group()` (everything that can be drawn). Then `Player.containers = (updatable, drawable)` is set, and only *after* that is the `Player` created. That order matters: the class has to know its groups before any `Player` object exists, otherwise the player is created without joining either group and nothing gets updated or drawn. The loop no longer calls `player.update(dt)` and `player.draw(screen)` directly. Instead each frame is now: log the state, handle events, `updatable.update(dt)`, wipe the screen, `for thing in drawable: thing.draw(screen)`, then flip and work out `dt`. The `flip()` sits outside the `for` loop so it runs once per frame, not once per object. The point of all this is that the loop doesn't need to know about each individual object: any future object (asteroids, shots) just joins the right groups and gets updated/drawn automatically.
+- **Groups can overlap:** an object can be in several groups at once. The player is in both `updatable` and `drawable`, whereas some later objects (like the asteroid field) will only need updating, so they'll be in `updatable` only.
 
 **constants.py**
 - `SCREEN_WIDTH` — the game window's width in pixels (1280)
@@ -127,6 +133,7 @@ The terminal is also unable to be used until the pygame window closes at this ti
 - `__init__(x, y, radius)` stores three attributes: `position` (a `pygame.Vector2` of x and y), `velocity` (a `Vector2` starting at `(0, 0)`, i.e. not moving) and `radius`.
 - Inside `__init__`, `hasattr(self, "containers")` checks whether any sprite groups have been set up; if so, `super().__init__(*self.containers)` adds the object to them automatically, otherwise plain `super().__init__()` is used. The groups aren't used yet, they're for later.
 - `draw(screen)` and `update(dt)` are empty placeholders (`pass`) marked "must override": each child class provides its own version, since a ship and an asteroid will draw and update differently.
+- **14/11/2026 update:** the groups are now being used. Because `Player.containers = (updatable, drawable)` is set before the player is created, the `hasattr(self, "containers")` check finds it, and `super().__init__(*self.containers)` adds the new player to both groups automatically. `circleshape.py` itself didn't need any changes.
 
 **player.py** (added 07/11/2026)
 - `Player` inherits from `CircleShape`. Its constructor takes `x` and `y`, passes `x`, `y` and `PLAYER_RADIUS` up to `CircleShape` with `super().__init__(...)`, and sets `self.rotation = 0`. The radius isn't an input because it's always the same constant.
@@ -147,14 +154,4 @@ The terminal is also unable to be used until the pygame window closes at this ti
 
 - **27/09/2026 — Missing `.gitignore`**: The lesson said `uv init` would auto-create a `.gitignore`, but it wasn't present after setup. Also got confused between two different `.gitignore` files — one auto-generated later inside `.venv/` (governs pygame/venv internals only) and the actual project-level one next to `main.py` (created manually with `touch .gitignore`, and the one that matters for git tracking). Lesson: check *which* `.gitignore` you're editing when a project has more than one.
 
-- **30/09/2026 — `Failed to spawn main.py: No such file or directory`**: Ran `uv run main.py` from the outer `Asteroids-Project` folder, but `main.py` lives inside a nested folder, so the terminal couldn't find it. Fixed by using `pwd` and `ls` to see where I was, then `cd`-ing into the folder that contains `main.py`. Lesson: the terminal only looks in the folder it's standing in.
-
-- **07/11/2026 — Merge conflict in `player.py`**: Half-finished Chapter 3 Lesson 2 work had been committed straight onto `main` instead of the lesson branch, so merging the `Draw-Player` branch into `main` conflicted in `player.py` (git marks the two competing versions with `<<<<<<<`, `=======` and `>>>>>>>` lines inside the file). Fixed by keeping the incoming `Draw-Player` version (the finished one) in the editor and checking that no marker lines were left in the file. Afterwards `git status` still showed `player.py` as modified, meaning the cleaned-up version hadn't been committed yet and the committed merge still had leftover junk in it, so it needed its own commit and push. Lesson: a conflict isn't resolved until the clean file is committed, and unfinished lesson work should stay on its own branch rather than `main`.
-
-## Other Mentions
-
-- **27/09/2026** — Learning Git/source control alongside this project — using VS Code's Source Control panel (stage → commit → push) rather than the terminal for most git operations, with terminal used mainly for running/testing the code via `uv`.
-
-- **30/09/2026** — Started using a separate git branch for each lesson (`gameLoop` for this one) so mistakes never touch `main`. Committed and pushed the branch, then merged it into `main` from the terminal (`git checkout main`, `git merge gameLoop`, `git push origin main`). The branch was kept afterwards to preserve history. I started to do this as I learnt from my bookbot mistakes
-
-- **07/11/2026** — Came back to the project after a break in the middle of Chapter 3 Lesson 2 (Draw Player). I carried on from the existing `Draw-Player` branch, finished the lesson there, then merged it into `main`, which led to my first merge conflict (see Troubleshooting Notes). Both branches were kept for history.
+- **30/09/2026 — `Failed to spawn main.py: No such file or directory`**: Ran `uv run main.py` from the outer
