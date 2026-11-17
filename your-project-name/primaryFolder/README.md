@@ -25,6 +25,8 @@ Asteroids is a Python game project (following the boot.dev Pygame curriculum) th
 - `AsteroidField` added in `asteroidfield.py`, which keeps spawning new asteroids from the edges of the screen — 14/11/2026
 - Collision detection added: `collides_with` on `CircleShape`, so flying into an asteroid logs a `player_hit` event, prints `Game over!` and ends the game — 14/11/2026
 - Shooting added: the spacebar fires small round bullets (`Shot` class in `shot.py`) in the direction the ship is facing, plus a `shots` group and the `SHOT_RADIUS` and `PLAYER_SHOOT_SPEED` constants — 15/11/2026
+- Rate limit added: the ship can now only shoot once every 0.3 seconds, using a `shoot_timer` on `Player` and a `PLAYER_SHOOT_COOLDOWN_SECONDS` constant — 15/11/2026
+- Destruction added: shooting an asteroid now logs an `asteroid_shot` event and removes both the bullet and the asteroid from the game with `.kill()` — 17/11/2026
 
 
 ## Features
@@ -43,6 +45,8 @@ Asteroids is a Python game project (following the boot.dev Pygame curriculum) th
 - Asteroids (white circle outlines) drift across the screen in straight lines at a constant speed, and the `AsteroidField` spawns a new one from a random edge of the screen roughly every 0.8 seconds, with a random size, speed and direction (added 14/11/2026)
 - Collision detection between circular shapes: if the player touches an asteroid, the hit is logged as a `player_hit` event in `game_events.jsonl`, `Game over!` is printed to the terminal and the game exits. Asteroids simply pass through each other for now (added 14/11/2026)
 - The player can shoot: holding the spacebar fires small white circles (bullets) from the ship in the direction it is currently facing, at a constant speed. For now, holding the spacebar fires a constant stream of bullets and the bullets pass straight through asteroids without any effect (both are expected at this stage of the course) (added 15/11/2026)
+- Shooting is now rate-limited: after firing, the ship has to wait 0.3 seconds before it can fire again, so holding the spacebar gives roughly three bullets a second instead of a constant stream. Bullets still pass through asteroids for now (added 15/11/2026)
+- Bullets now destroy asteroids: when a bullet touches an asteroid, an `asteroid_shot` event is logged in `game_events.jsonl` and both the bullet and the asteroid disappear. Asteroids don't split into smaller ones yet, they just vanish (added 17/11/2026)
 
 ## Project Structure (files/folders) - May be updated as the Project grows
 ```
@@ -89,6 +93,10 @@ uv run main.py
 
 **15/11/2026 note:** press (or hold) the spacebar to shoot. Bullets fly out in the direction the ship is facing.
 
+**15/11/2026 note (rate limit):** holding the spacebar now fires one bullet roughly every 0.3 seconds, so there's no need to tap it quickly.
+
+**17/11/2026 note:** shoot an asteroid to destroy it. Both the bullet and the asteroid disappear.
+
 ## Example Output
 
 **27/09/2026** — after adding constants and the startup print statements:
@@ -124,6 +132,10 @@ The terminal is also unable to be used until the pygame window closes at this ti
 
 **15/11/2026** — after adding shooting: the terminal output is the same as before, but pressing the spacebar now makes small white circles shoot out of the ship in the direction it is facing (they keep flying in a straight line, even off the edge of the screen, and pass through asteroids). `game_state.jsonl` now also records the `shots` group (the Boot.dev test checks that at least one recorded snapshot has `shots.count > 0`). The logger only records for roughly the first 16 seconds of a run, so the spacebar has to be pressed early in the run for the test to see any shots.
 
+**15/11/2026** — after adding the rate limit: the terminal output is still the same, but holding the spacebar now fires about three bullets a second (one every 0.3 seconds) instead of a constant stream. The Boot.dev test checks the last snapshot in `game_state.jsonl` and expects the number of shots to be less than `elapsed_s * 5` (that is, fewer than five shots per second on average), as well as at least one shot existing, so the spacebar needs to be held for a few seconds while the game runs.
+
+**17/11/2026** — after adding destruction: the terminal output is unchanged, but shooting an asteroid now makes both the bullet and the asteroid disappear from the window, and an `asteroid_shot` event is written to `game_events.jsonl` each time (the Boot.dev test checks that at least one `asteroid_shot` event exists, so an asteroid has to actually be shot during the run). The `player_hit` event from the collisions lesson still ends the game as before.
+
 ## How It Works (this specific project, variables can change)
 
 **main.py**
@@ -142,6 +154,8 @@ The terminal is also unable to be used until the pygame window closes at this ti
 - **14/11/2026 update (Collisions):** right after `updatable.update(dt)`, the loop checks every asteroid in the `asteroids` group with `asteroid.collides_with(player)`. If one is touching the player, it calls `log_event("player_hit")`, prints `Game over!` and calls `sys.exit()` to end the game straight away (`sys` is imported at the top, along with `log_event` from `logger`). The check happens before the drawing, so the frame of the collision never gets drawn.
 - **15/11/2026 update (Collisions placement):** after the Collisions code had to be put back (see Troubleshooting Notes), the collision loop currently sits *after* `pygame.display.flip()` rather than right after `updatable.update(dt)`. It behaves the same for the game and the lesson (touching an asteroid logs `player_hit`, prints `Game over!` and exits), the only difference being that the frame where the collision happens is drawn once before the game ends.
 - **15/11/2026 update (Shooting):** a fourth group, `shots`, is created with the other three before the game loop, and `Shot.containers = (shots, drawable, updatable)` is set with the other `containers` lines (before anything is created). Every bullet the player fires joins those three groups automatically, so the loop didn't need any other changes for bullets to be updated and drawn. The group has to be called `shots` because the Boot.dev test reads that name from `game_state.jsonl`.
+- **15/11/2026 update (Rate Limit):** `main.py` didn't need any changes for the rate limit. All of it lives in `player.py`, and it works through the existing `updatable.update(dt)` call, because that's what passes `dt` to the player each frame.
+- **17/11/2026 update (Destruction):** a second collision check was added to the game loop, after the player-vs-asteroid one and still inside `while True:`. It's a loop inside a loop: `for asteroid in asteroids:` and, inside that, `for shot in shots:`. If `asteroid.collides_with(shot)` is true, it calls `log_event("asteroid_shot")` and then `asteroid.kill()` and `shot.kill()`. `kill()` is built in to pygame sprites and removes the sprite from every group it belongs to, which is why nothing else needed changing: once an object is out of `updatable` and `drawable`, it stops being updated and drawn. This reuses `collides_with` from `CircleShape`, which works between any two circle shapes, so the same method that checks the player against asteroids also checks shots against asteroids. The player check still ends the game, this one only removes the two objects involved. (For now asteroids simply vanish when hit; splitting into smaller asteroids is for a later lesson.)
 
 **constants.py**
 - `SCREEN_WIDTH` — the game window's width in pixels (1280)
@@ -151,10 +165,12 @@ The terminal is also unable to be used until the pygame window closes at this ti
 - **13/11/2026 update:** `PLAYER_SPEED` (200) — how fast the player moves, in pixels per second
 - **14/11/2026 update:** `ASTEROID_MIN_RADIUS` (20) — the radius of the smallest asteroid, `ASTEROID_KINDS` (3) — how many asteroid sizes there are, `ASTEROID_SPAWN_RATE_SECONDS` (0.8) — how often a new asteroid spawns, and `ASTEROID_MAX_RADIUS` — worked out as `ASTEROID_MIN_RADIUS * ASTEROID_KINDS` (60), the radius of the biggest asteroid
 - **15/11/2026 update:** `SHOT_RADIUS` (5) — the radius of a bullet, and `PLAYER_SHOOT_SPEED` (500) — how fast bullets travel, in pixels per second
+- **15/11/2026 update (rate limit):** `PLAYER_SHOOT_COOLDOWN_SECONDS` (0.3) — how long the player has to wait between shots, in seconds
 
 **logger.py**
 - Provided logging utility (not written from scratch, was instead given to us in BootDev Chapter 2 Lesson 2) that snapshots the game's local state at about once per second & writes it to `game_state.jsonl`, so that the game behaviour is able to be verified without the need to manually inspect the running window
 - **14/11/2026 update:** `log_event` (also provided) is used for one-off events, such as `log_event("player_hit")` when the ship hits an asteroid. These are written to `game_events.jsonl`, which was added to `.gitignore` so it doesn't get committed (it's a generated file, like `game_state.jsonl`).
+- **17/11/2026 update:** `log_event("asteroid_shot")` is now also used, each time a bullet hits an asteroid.
 
 **circleshape.py** (added 01/10/2026)
 - Provided base class from BootDev Chapter 3 Lesson 1 (pasted in, not written from scratch). `CircleShape` inherits from `pygame.sprite.Sprite`, meaning it starts with everything `Sprite` already has and adds game-specific attributes on top. Other game objects (the player, later the asteroids) are built on top of it so the shared parts are only written once.
@@ -173,11 +189,13 @@ The terminal is also unable to be used until the pygame window closes at this ti
 - **13/11/2026 update:** `update(dt)` overrides `CircleShape.update`. It uses `pygame.key.get_pressed()` to see which keys are currently held down: `A` calls `self.rotate(-dt)` and `D` calls `self.rotate(dt)`. Passing a negative `dt` reverses the direction, which is how `A` turns the ship left while `D` turns it right.
 - **13/11/2026 update (movement):** `move(dt)` works in four steps. (1) Start with a unit vector pointing straight down, `pygame.Vector2(0, 1)`. (2) Rotate it by the player's `rotation` so it points the same way the ship does (`unit_vector.rotate(...)` returns a *new* vector rather than changing the original, hence it's saved into `rotated_vector`). (3) Multiply it by `PLAYER_SPEED * dt` so its length is how far the ship should travel this frame. (4) Add that vector to `self.position`. `update` now also calls `self.move(dt)` when `W` is held and `self.move(-dt)` when `S` is held, so negative `dt` makes the ship go backward, the same trick as the rotation keys.
 - **15/11/2026 update (shooting):** `shoot()` creates a new `Shot` at the player's current position (`Shot(self.position.x, self.position.y)`) and sets its `velocity` the same way `move` works out a direction: start with `pygame.Vector2(0, 1)`, rotate it by `self.rotation` so it points the way the ship is facing, then multiply it by `PLAYER_SHOOT_SPEED` to make it travel fast. `update` also checks `pygame.K_SPACE` and calls `self.shoot()`. `Shot` and `PLAYER_SHOOT_SPEED` have to be imported at the top of `player.py`. A missing import only causes a crash the first time the spacebar is pressed, not when the game starts.
+- **15/11/2026 update (rate limit):** `__init__` now also sets `self.shoot_timer = 0` (an attribute, so it sticks around between frames like `self.rotation`). At the very start of `shoot()`, `if self.shoot_timer > 0: return` makes the method leave without firing while the cooldown is still running; otherwise it sets `self.shoot_timer = PLAYER_SHOOT_COOLDOWN_SECONDS` and then creates the shot as before. At the very start of `update(dt)`, `self.shoot_timer -= dt` counts the timer down every frame, *before* the spacebar is checked. The result is that after each shot the timer is 0.3, it ticks down to 0 over the next 0.3 seconds, and only then can the next shot be fired, however long the spacebar is held.
 
 **asteroid.py** (added 14/11/2026)
 - `Asteroid` inherits from `CircleShape`, the same way `Player` does. Its constructor takes `x`, `y` and `radius` and passes all three up with `super().__init__(x, y, radius)`.
 - `draw(screen)` overrides `CircleShape.draw` and draws a white circle outline with `pygame.draw.circle(screen, "white", self.position, self.radius, LINE_WIDTH)`. The circle you see is also the hitbox, so what you see is what collides.
 - `update(dt)` overrides `CircleShape.update` with `self.position += self.velocity * dt`, so the asteroid moves in a straight line at a constant speed (and, like the player, scaled by `dt`). A new asteroid's `velocity` starts at `(0, 0)`, and the `AsteroidField` gives it a real velocity when it spawns it.
+- **17/11/2026 update:** asteroids can now be destroyed. When a bullet hits one, `main.py` calls `asteroid.kill()` on it, which removes it from all of its groups. No changes were needed in `asteroid.py` itself.
 
 **asteroidfield.py** (added 14/11/2026)
 - Provided by Boot.dev (pasted in, not written from scratch). `AsteroidField` is itself a sprite, but it never draws anything, it just keeps a timer and spawns asteroids, which is why it only goes in the `updatable` group.
@@ -188,6 +206,7 @@ The terminal is also unable to be used until the pygame window closes at this ti
 - `Shot` (a bullet) inherits from `CircleShape`, like `Asteroid`. Its constructor only takes `x` and `y`, and passes `x`, `y` and `SHOT_RADIUS` up with `super().__init__(...)`, because every bullet is the same size.
 - `draw(screen)` and `update(dt)` are written the same way as the asteroid's: a white circle outline of the shot's radius, and `self.position += self.velocity * dt` for straight-line movement at a constant speed. The `velocity` isn't set in `Shot` itself, `Player.shoot()` sets it after creating the shot, which is what makes bullets go the way the ship faces.
 - Bullets are never removed yet, so they keep flying off the screen forever (a problem for a later lesson).
+- **17/11/2026 update:** a bullet is now removed when it hits an asteroid (`shot.kill()` in `main.py`). A bullet that misses still keeps flying off the screen forever.
 
 ## Troubleshooting Notes
 
@@ -207,12 +226,10 @@ The terminal is also unable to be used until the pygame window closes at this ti
 
 - **15/11/2026 — Collisions code went missing, so hitting an asteroid did nothing**: While working on the Shooting lesson, flying into an asteroid stopped ending the game, with no error message at all. The Collisions code (the collision loop and the `sys`/`log_event` imports in `main.py`, and the `collides_with` method in `circleshape.py`) was no longer in the Shooting branch, most likely because the Collisions branch hadn't been merged into `main` before the Shooting branch was started. The Boot.dev submit for Shooting also failed until it was put back. Fixed by re-adding the collision loop and imports to `main.py`; the first run after that then crashed with `AttributeError: 'Asteroid' object has no attribute 'collides_with'`, which is what showed `collides_with` was missing from `circleshape.py` too, so that was added back as well. Lesson: merge each finished lesson into `main` (and check with `git branch --merged main`) before starting the next lesson's branch, so nothing gets left behind.
 
+- **17/11/2026 — The rate limit stopped working (human error: I forgot to merge the previous lesson's branch)**: While working on the Destruction lesson, holding the spacebar had gone back to firing a constant stream of bullets, even though the Rate Limit lesson had worked. There was no error message. The cause was my mistake: I forgot to merge the Rate Limit lesson's branch (`shootingLimit`) into `main` before I created the Destruction branch, so the Destruction branch never had the rate limit code. Looking at `player.py` showed it: there was no `self.shoot_timer = 0` in `__init__`, no cooldown check at the start of `shoot()` and no `self.shoot_timer -= dt` at the start of `update()`. Fixed by re-adding those three pieces. Lesson: this was the second time the same mistake happened (the Collisions code went missing the same way), so the rule is to finish a lesson, commit, push and merge it into `main` *before* starting the next one, and to run `git branch --merged main` to check it actually went in.
+
 ## Other Mentions
 
 - **27/09/2026** — Learning Git/source control alongside this project — using VS Code's Source Control panel (stage → commit → push) rather than the terminal for most git operations, with terminal used mainly for running/testing the code via `uv`.
 
 - **30/09/2026** — Started using a separate git branch for each lesson (`gameLoop` for this one) so mistakes never touch `main`. Committed and pushed the branch, then merged it into `main` from the terminal (`git checkout main`, `git merge gameLoop`, `git push origin main`). The branch was kept afterwards to preserve history. I started to do this as I learnt from my bookbot mistakes
-
-- **07/11/2026** — Came back to the project after a break in the middle of Chapter 3 Lesson 2 (Draw Player). I carried on from the existing `Draw-Player` branch, finished the lesson there, then merged it into `main`, which led to my first merge conflict (see Troubleshooting Notes). Both branches were kept for history.
-
-- **14/11/2026** — The branch for the Asteroids lesson was named `Asteroid's`. The apostrophe means the name has to be wrapped in double quotes in terminal commands (`git push -u origin "Asteroid's"`, `git merge "Asteroid's"`), otherwise zsh thinks a quote has been opened and waits for it to be closed. Simple branch names (no apostrophes or brackets) are easier.
