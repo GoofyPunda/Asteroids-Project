@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 {"timestamp": "22:57:42.725", "elapsed_s": 3, "frame": 158, "type": "asteroid_shot"}
 {"timestamp": "22:57:43.752", "elapsed_s": 4, "frame": 220, "type": "asteroid_shot"}
 {"timestamp": "22:57:44.034", "elapsed_s": 4, "frame": 237, "type": "asteroid_shot"}
@@ -16,3 +17,22 @@
 {"timestamp": "22:58:09.831", "elapsed_s": 30, "frame": 961, "type": "asteroid_shot"}
 {"timestamp": "22:58:09.980", "elapsed_s": 30, "frame": 961, "type": "asteroid_shot"}
 {"timestamp": "22:58:10.918", "elapsed_s": 31, "frame": 961, "type": "player_hit"}
+=======
+{"timestamp": "22:30:34.341", "elapsed_s": 4, "frame": 193, "type": "asteroid_shot"}
+{"timestamp": "22:30:35.451", "elapsed_s": 5, "frame": 260, "type": "asteroid_shot"}
+{"timestamp": "22:30:35.452", "elapsed_s": 5, "frame": 260, "type": "asteroid_shot"}
+{"timestamp": "22:30:36.181", "elapsed_s": 5, "frame": 304, "type": "asteroid_shot"}
+{"timestamp": "22:30:36.361", "elapsed_s": 6, "frame": 315, "type": "asteroid_shot"}
+{"timestamp": "22:30:36.444", "elapsed_s": 6, "frame": 320, "type": "asteroid_shot"}
+{"timestamp": "22:30:36.575", "elapsed_s": 6, "frame": 328, "type": "asteroid_shot"}
+{"timestamp": "22:30:36.576", "elapsed_s": 6, "frame": 328, "type": "asteroid_shot"}
+{"timestamp": "22:30:37.322", "elapsed_s": 7, "frame": 373, "type": "asteroid_shot"}
+{"timestamp": "22:30:37.357", "elapsed_s": 7, "frame": 375, "type": "asteroid_shot"}
+{"timestamp": "22:30:37.925", "elapsed_s": 7, "frame": 409, "type": "asteroid_shot"}
+{"timestamp": "22:30:39.245", "elapsed_s": 8, "frame": 488, "type": "asteroid_shot"}
+{"timestamp": "22:30:39.245", "elapsed_s": 8, "frame": 488, "type": "asteroid_shot"}
+{"timestamp": "22:30:39.683", "elapsed_s": 9, "frame": 514, "type": "asteroid_shot"}
+{"timestamp": "22:30:40.349", "elapsed_s": 10, "frame": 553, "type": "asteroid_shot"}
+{"timestamp": "22:30:40.349", "elapsed_s": 10, "frame": 553, "type": "asteroid_shot"}
+{"timestamp": "22:30:44.988", "elapsed_s": 14, "frame": 831, "type": "player_hit"}
+>>>>>>> 5c164561dec5ccc21d4a1eaa0227b07994bb47a9
